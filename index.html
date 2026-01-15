@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+<meta charset="UTF-8">
+<title>BIXEL Store</title>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyAyyw14tck0mkhXBmPb5Xh--I4u2cBdhCQ",
+  authDomain: "bixel-store-8030-8dc9b.firebaseapp.com",
+  projectId: "bixel-store-8030-8dc9b"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+</script>
+
+<style>
+body{font-family:tahoma;background:#f4f4f4;text-align:center}
+.box{background:#fff;padding:20px;margin:15px auto;width:90%;max-width:400px;border-radius:12px}
+input,select,button{width:100%;padding:10px;margin:6px 0;border-radius:8px;border:1px solid #ccc}
+button{background:#2196f3;color:#fff;border:none;font-weight:bold}
+.order{border:1px solid #ddd;padding:8px;margin:6px 0;border-radius:8px;text-align:right}
+.hidden{display:none}
+.noOrders{color:#555;font-style:italic}
+</style>
+</head>
+
+<body>
+
+<h2>🟢 BIXEL STORE</h2>
+
+<!-- تسجيل الدخول -->
+<div class="box" id="loginBox">
+  <input id="email" placeholder="الإيميل">
+  <input id="pass" type="password" placeholder="كلمة المرور">
+  <button onclick="login()">دخول</button>
+  <button onclick="showRegister()">إنشاء حساب</button>
+</div>
+
+<div class="box hidden" id="registerBox">
+  <input id="regEmail" placeholder="الإيميل">
+  <input id="regPass" type="password" placeholder="كلمة المرور">
+  <button onclick="register()">تسجيل</button>
+  <button onclick="hideRegister()">إلغاء</button>
+</div>
+
+<!-- عروض المتابعين -->
+<div class="box hidden" id="userBox">
+  <h3 id="balanceText">الرصيد: 0 BIXEL</h3>
+
+  <select id="offer">
+    <option value="">اختر العرض</option>
+  </select>
+
+  <input type="number" id="quantity" placeholder="العدد (مضاعف 100)">
+  <p id="price"></p>
+
+  <input id="link" placeholder="الرابط">
+  <button onclick="sendOrder()">إرسال الطلب</button>
+</div>
+
+<!-- الطلبات -->
+<div class="box hidden" id="ordersBox">
+  <h3>📦 طلباتي</h3>
+  <div id="myOrders"></div>
+  <p id="noOrdersMsg" class="noOrders hidden">لا توجد طلبات</p>
+</div>
+
+<script>
+let offers = {};
+let currentBalance = 0;
+
+// تسجيل / دخول
+function showRegister(){loginBox.classList.add("hidden");registerBox.classList.remove("hidden");}
+function hideRegister(){registerBox.classList.add("hidden");loginBox.classList.remove("hidden");}
+
+function register(){
+ auth.createUserWithEmailAndPassword(regEmail.value, regPass.value).then(res=>{
+   db.collection("users").doc(res.user.uid).set({
+     email: regEmail.value,
+     bixel:0,
+     role:"user"
+   });
+   alert("تم إنشاء الحساب");
+   hideRegister();
+ });
+}
+
+function login(){
+ auth.signInWithEmailAndPassword(email.value, pass.value);
+}
+
+// بعد تسجيل الدخول
+auth.onAuthStateChanged(user=>{
+ if(!user) return;
+
+ loginBox.classList.add("hidden");
+ registerBox.classList.add("hidden");
+ userBox.classList.remove("hidden");
+ ordersBox.classList.remove("hidden");
+
+ // تحميل عروض المتابعين
+ db.collection("offers").onSnapshot(snap=>{
+   offer.innerHTML='<option value="">اختر العرض</option>';
+   offers={};
+   snap.forEach(doc=>{
+     offers[doc.id]=doc.data();
+     let o=document.createElement("option");
+     o.value=doc.id;
+     o.textContent=`${doc.data().name} (${doc.data().pricePer100} / 100 BIXEL)`;
+     offer.appendChild(o);
+   });
+ });
+
+ // الرصيد
+ db.collection("users").doc(user.uid).onSnapshot(doc=>{
+   currentBalance=doc.data().bixel||0;
+   balanceText.innerText="الرصيد: "+currentBalance+" BIXEL";
+ });
+
+ loadMyOrders(user.uid);
+});
+
+// حساب السعر عروض المتابعين
+quantity.oninput=calc;
+offer.onchange=calc;
+function calc(){
+ if(!quantity.value||!offer.value){price.innerText="";return;}
+ let cost=(quantity.value/100)*offers[offer.value].pricePer100;
+ price.innerText="السعر: "+cost+" BIXEL";
+}
+
+// إرسال طلب عروض المتابعين
+function sendOrder(){
+ let user=auth.currentUser;
+ let q=Number(quantity.value);
+ let o=offer.value;
+ if(!q||!o||!link.value)return alert("أكمل البيانات");
+ let cost=(q/100)*offers[o].pricePer100;
+ if(cost>currentBalance)return alert("رصيد غير كاف");
+
+ db.collection("orders").add({
+   userId:user.uid,
+   email:user.email,
+   offer:offers[o].name,
+   quantity:q,
+   bixelRequired:cost,
+   link:link.value,
+   status:"pending",
+   createdAt:firebase.firestore.FieldValue.serverTimestamp()
+ });
+ alert("تم إرسال الطلب");
+ quantity.value=""; link.value=""; price.innerText="";
+}
+
+// طلباتي
+function loadMyOrders(uid){
+ db.collection("orders").where("userId","==",uid)
+ .onSnapshot(s=>{
+   myOrders.innerHTML="";
+   if(s.empty){noOrdersMsg.classList.remove("hidden");}
+   else{
+     noOrdersMsg.classList.add("hidden");
+     s.forEach(d=>{
+       let o=d.data();
+       myOrders.innerHTML+=`
+       <div class="order">
+       ${o.offer}<br>
+       ${o.quantity} | ${o.bixelRequired} BIXEL<br>
+       ${o.status}
+       </div>`;
+     });
+   }
+ });
+}
+</script>
+
+</body>
+</html>
