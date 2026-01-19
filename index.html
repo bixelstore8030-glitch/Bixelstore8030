@@ -67,7 +67,8 @@ button{background:#2196f3;color:#fff;border:none;font-weight:bold}
 <!-- الطلبات -->
 <div class="box hidden" id="ordersBox">
   <h3>📦 طلباتي</h3>
-  <div id="myOrders"></div>
+  <button id="toggleOrdersBtn">عرض طلباتي</button>
+  <div id="myOrders" class="hidden"></div>
   <p id="noOrdersMsg" class="noOrders hidden">لا توجد طلبات</p>
 </div>
 
@@ -135,7 +136,7 @@ function calc(){
  price.innerText="السعر: "+cost+" BIXEL";
 }
 
-// إرسال طلب عروض المتابعين
+// إرسال طلب عروض المتابعين (مع الرابط صحيح)
 function sendOrder(){
  let user=auth.currentUser;
  let q=Number(quantity.value);
@@ -144,13 +145,14 @@ function sendOrder(){
  let cost=(q/100)*offers[o].pricePer100;
  if(cost>currentBalance)return alert("رصيد غير كاف");
 
+ // إنشاء الطلب في Firebase
  db.collection("orders").add({
    userId:user.uid,
    email:user.email,
    offer:offers[o].name,
    quantity:q,
    bixelRequired:cost,
-   link:link.value,
+   link:link.value, // الآن الرابط محفوظ بشكل صحيح
    status:"pending",
    createdAt:firebase.firestore.FieldValue.serverTimestamp()
  });
@@ -172,12 +174,26 @@ function loadMyOrders(uid){
        <div class="order">
        ${o.offer}<br>
        ${o.quantity} | ${o.bixelRequired} BIXEL<br>
+       الرابط: <a href="${o.link}" target="_blank">${o.link}</a><br>
        ${o.status}
        </div>`;
      });
    }
  });
 }
+
+// زر عرض/إخفاء الطلبات
+let toggleBtn = document.getElementById("toggleOrdersBtn");
+let ordersDiv = document.getElementById("myOrders");
+toggleBtn.addEventListener("click", function() {
+    if (ordersDiv.classList.contains("hidden")) {
+        ordersDiv.classList.remove("hidden");
+        toggleBtn.textContent = "إخفاء طلباتي";
+    } else {
+        ordersDiv.classList.add("hidden");
+        toggleBtn.textContent = "عرض طلباتي";
+    }
+});
 </script>
 
 </body>
