@@ -121,7 +121,7 @@ function adminLogin(){
     }).catch(err=>alert(err.message));
 }
 
-// تحميل الطلبات وتحديث العدادات
+// تحميل الطلبات وتحديث العدادات (مع الرابط)
 function loadOrders(){
   let status = filterStatus.value;
 
@@ -151,12 +151,14 @@ function loadOrders(){
         d.status==="rejected"?"❌ مرفوض":
         "⏳ معلقة";
 
+      // ✅ عرض الطلب مع الرابط الآن
       orders.innerHTML += `
       <div class="order" id="order-${doc.id}">
         📧 ${d.email}<br>
         📦 ${d.offer}<br>
         🔢 ${d.quantity}<br>
         💰 ${d.bixelRequired} BIXEL<br>
+        🔗 الرابط: <a href="${d.link}" target="_blank">${d.link}</a><br>
         🟢 ${statusText}<br>
         ${buttons}
       </div>`;
