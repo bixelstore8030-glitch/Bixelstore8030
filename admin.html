@@ -23,12 +23,13 @@ let ordersListener = null;
 <style>
 body{font-family:tahoma;background:#f2f2f2;text-align:center}
 .box{background:#fff;padding:20px;margin:15px auto;width:90%;max-width:500px;border-radius:12px}
-.order,.offer{border:1px solid #ddd;padding:10px;margin:8px 0;border-radius:8px;text-align:right}
+.order,.offer,.gameOffer{border:1px solid #ddd;padding:10px;margin:8px 0;border-radius:8px;text-align:right}
 input,button,select{width:100%;padding:10px;margin:5px 0;border-radius:8px}
 button{background:#2196f3;color:#fff;border:none;font-weight:bold;cursor:pointer}
 button.approve{background:#4caf50}
 button.reject{background:#f44336}
 button.edit{background:#ff9800}
+button.save{background:#4caf50}
 button.show-offers{background:#009688}
 button.delete-orders{background:#e91e63}
 .counter{font-weight:bold;margin-left:10px}
@@ -83,12 +84,26 @@ button.delete-orders{background:#e91e63}
 
 <!-- إدارة عروض المتابعين -->
 <div class="box">
-  <h3>➕ إضافة عرض متابعين</h3>
+  <h3>➕ إدارة عروض المتابعين</h3>
   <input id="offerName" placeholder="اسم العرض">
   <input id="offerPrice" type="number" placeholder="سعر كل 100 BIXEL">
+  <input id="offerLink" placeholder="الرابط (اختياري)">
+  <input id="offerNote" placeholder="ملاحظة (اختياري)">
   <button onclick="addOffer()">إضافة</button>
-  <button class="show-offers" onclick="toggleOffers()">عرض العروض الحالية</button>
-  <div id="offersList" class="hidden"></div>
+  <button onclick="toggleAdminOffers()">👁️ إخفاء/إظهار عروض المتابعين</button>
+  <div id="offersList"></div>
+</div>
+
+<!-- إدارة عروض شحن الألعاب -->
+<div class="box">
+  <h3>➕ إدارة عروض شحن الألعاب/البرامج</h3>
+  <input id="gameName" placeholder="اسم العرض">
+  <input type="number" id="gamePrice" placeholder="سعر الوحدة BIXEL">
+  <input id="gameUnit" placeholder="اسم الوحدة (مثل UC أو Gems)">
+  <input id="gameNote" placeholder="ملاحظات">
+  <button onclick="addGameOffer()">إضافة</button>
+  <button onclick="toggleGameOffers()">👁️ إخفاء/إظهار عروض الألعاب</button>
+  <div id="gameOffersList"></div>
 </div>
 
 <!-- شحن يدوي -->
@@ -113,6 +128,8 @@ function adminLogin(){
           loginBox.classList.add("hidden");
           adminBox.classList.remove("hidden");
           loadOrders();
+          loadOffers();
+          loadGameOffers();
         } else {
           alert("❌ غير مصرح لك");
           auth.signOut();
@@ -121,7 +138,7 @@ function adminLogin(){
     }).catch(err=>alert(err.message));
 }
 
-// تحميل الطلبات وتحديث العدادات (مع الرابط)
+// تحميل الطلبات
 function loadOrders(){
   let status = filterStatus.value;
 
@@ -151,17 +168,26 @@ function loadOrders(){
         d.status==="rejected"?"❌ مرفوض":
         "⏳ معلقة";
 
-      // ✅ عرض الطلب مع الرابط الآن
-      orders.innerHTML += `
-      <div class="order" id="order-${doc.id}">
-        📧 ${d.email}<br>
-        📦 ${d.offer}<br>
-        🔢 ${d.quantity}<br>
-        💰 ${d.bixelRequired} BIXEL<br>
-        🔗 الرابط: <a href="${d.link}" target="_blank">${d.link}</a><br>
-        🟢 ${statusText}<br>
-        ${buttons}
-      </div>`;
+      if(d.type==="game_charge"){
+        orders.innerHTML += `
+        <div class="order" id="order-${doc.id}">
+          🎮 ${d.offerName} | ${d.quantity} ${d.unit} | ${d.bixelRequired} BIXEL<br>
+          الحساب: ${d.account}<br>
+          🟢 ${statusText}<br>
+          ${buttons}
+        </div>`;
+      } else {
+        orders.innerHTML += `
+        <div class="order" id="order-${doc.id}">
+          📧 ${d.email}<br>
+          📦 ${d.offer}<br>
+          🔢 ${d.quantity}<br>
+          💰 ${d.bixelRequired} BIXEL<br>
+          🔗 الرابط: <a href="${d.link}" target="_blank">${d.link}</a><br>
+          🟢 ${statusText}<br>
+          ${buttons}
+        </div>`;
+      }
     });
 
     document.getElementById("pendingCount").innerText=pending;
@@ -173,7 +199,7 @@ function loadOrders(){
   });
 }
 
-// حذف الطلبات مع عد تنازلي 5 ثواني
+// حذف الطلبات
 function deleteOrders(type){
   if(!confirm("هل تريد حذف الطلبات؟")) return;
 
@@ -201,16 +227,97 @@ function deleteOrders(type){
   },1000);
 }
 
-// إظهار/إخفاء العروض
-function toggleOffers(){
-  let container = document.getElementById("offersList");
-  if(container.classList.contains("hidden")){
-    container.classList.remove("hidden");
-    loadOffers();
-  } else {
-    container.classList.add("hidden");
-  }
+// إدارة عروض المتابعين
+let adminOffersVisible = true;
+function toggleAdminOffers(){
+  const offersEl = document.getElementById("offersList");
+  adminOffersVisible = !adminOffersVisible;
+  offersEl.classList.toggle("hidden", !adminOffersVisible);
+  alert(adminOffersVisible ? "✅ تم إظهار عروض المتابعين" : "✅ تم إخفاء عروض المتابعين");
 }
+
+function addOffer(){
+  let name=offerName.value.trim();
+  let price=Number(offerPrice.value);
+  let link=offerLink.value.trim();
+  let note=offerNote.value.trim();
+  if(!name || !price) return alert("أكمل البيانات");
+  db.collection("offers").add({name,pricePer100:price,link,note});
+  offerName.value=""; offerPrice.value=""; offerLink.value=""; offerNote.value="";
+}
+function loadOffers(){
+  db.collection("offers").onSnapshot(snapshot=>{
+    offersList.innerHTML="";
+    snapshot.forEach(doc=>{
+      let o = doc.data();
+      offersList.innerHTML += `
+      <div class="offer">
+        <input value="${o.name}" onchange="updateOffer('${doc.id}',this.value,'${o.link}','${o.note}','${o.pricePer100}')">
+        <input type="number" value="${o.pricePer100}" onchange="updateOffer('${doc.id}','${o.name}','${o.link}','${o.note}',this.value)">
+        <input value="${o.link||''}" placeholder="الرابط" onchange="updateOffer('${doc.id}', '${o.name}', this.value, '${o.note}', ${o.pricePer100})">
+        <input value="${o.note||''}" placeholder="ملاحظة" onchange="updateOffer('${doc.id}', '${o.name}', '${o.link}', this.value, ${o.pricePer100})">
+        <button class="save" onclick="saveOffer('${doc.id}', this)">💾 حفظ</button>
+        <button class="delete" onclick="deleteOffer('${doc.id}')">🗑️ حذف</button>
+      </div>`;
+    });
+  });
+}
+function updateOffer(id,newName,newLink,newNote,newPrice){
+  db.collection("offers").doc(id).update({name:newName,link:newLink,note:newNote,pricePer100:Number(newPrice)});
+}
+function saveOffer(id, btn){
+  btn.innerText="✅ تم الحفظ";
+  setTimeout(()=>{btn.innerText="💾 حفظ";},1500);
+}
+function deleteOffer(docId){ if(confirm("هل تريد حذف هذا العرض؟")) db.collection("offers").doc(docId).delete(); }
+
+// إدارة عروض شحن الألعاب
+let adminGameOffersVisible = true;
+function toggleGameOffers(){
+  const el = document.getElementById("gameOffersList");
+  adminGameOffersVisible = !adminGameOffersVisible;
+  el.classList.toggle("hidden", !adminGameOffersVisible);
+  alert(adminGameOffersVisible ? "✅ تم إظهار عروض الألعاب" : "✅ تم إخفاء عروض الألعاب");
+}
+
+function loadGameOffers(){
+  db.collection("game_offers").onSnapshot(snap=>{
+    gameOffersList.innerHTML="";
+    snap.forEach(doc=>{
+      let o = doc.data();
+      gameOffersList.innerHTML += `
+      <div class="gameOffer">
+        ${o.name} - ${o.pricePerUnit} BIXEL / ${o.unitName}<br>
+        ملاحظات: ${o.note || "-"}<br>
+        <button class="edit" onclick="editGameOffer('${doc.id}','${o.name}',${o.pricePerUnit},'${o.unitName}','${o.note || ""}')">✏️ تعديل</button>
+        <button class="delete" onclick="deleteGameOffer('${doc.id}')">🗑️ حذف</button>
+      </div>`;
+    });
+  });
+}
+function addGameOffer(){
+  let name=gameName.value.trim();
+  let price=Number(gamePrice.value);
+  let unit=gameUnit.value.trim();
+  let note=gameNote.value.trim();
+  if(!name || !price || !unit) return alert("أكمل البيانات");
+  db.collection("game_offers").add({name,pricePerUnit:price,unitName:unit,note,active:true});
+  gameName.value=""; gamePrice.value=""; gameUnit.value=""; gameNote.value="";
+}
+function editGameOffer(docId, oldName, oldPrice, oldUnit, oldNote){
+  let newName=prompt("اسم العرض الجديد:",oldName);
+  if(newName===null) return;
+  let newPrice=prompt("سعر الوحدة BIXEL:",oldPrice);
+  if(newPrice===null) return;
+  newPrice=Number(newPrice);
+  let newUnit=prompt("اسم الوحدة:",oldUnit);
+  if(newUnit===null) return;
+  let newNote=prompt("ملاحظات:",oldNote);
+  if(newNote===null) return;
+  db.collection("game_offers").doc(docId).update({name:newName.trim(),pricePerUnit:newPrice,unitName:newUnit.trim(),note:newNote});
+  alert("✅ تم تعديل العرض");
+}
+function deleteGameOffer(docId){ if(confirm("هل تريد حذف هذا العرض؟")) db.collection("game_offers").doc(docId).delete(); }
 
 // شحن يدوي
 function addBixel(){
@@ -222,43 +329,6 @@ function addBixel(){
     if(doc.exists){ ref.update({bixel:(doc.data().bixel||0)+amt}); alert("✅ تم شحن الرصيد بنجاح"); }
     else alert("❌ المستخدم غير موجود");
   });
-}
-
-// عروض المتابعين
-function loadOffers(){
-  db.collection("offers").onSnapshot(snapshot=>{
-    offersList.innerHTML="";
-    snapshot.forEach(doc=>{
-      let d = doc.data();
-      offersList.innerHTML+=`
-      <div class="offer">
-        ${d.name} — ${d.pricePer100} BIXEL / 100
-        <button class="edit" onclick="editOffer('${doc.id}','${d.name}',${d.pricePer100})">✏️ تعديل</button>
-        <button class="delete" onclick="deleteOffer('${doc.id}')">🗑️ حذف</button>
-      </div>`;
-    });
-  });
-}
-
-function addOffer(){
-  if(!offerName.value||!offerPrice.value){ alert("أكمل البيانات"); return; }
-  db.collection("offers").add({name:offerName.value.trim(),pricePer100:Number(offerPrice.value)});
-  offerName.value=""; offerPrice.value="";
-}
-
-function editOffer(docId, oldName, oldPrice){
-  let newName=prompt("اسم العرض الجديد:",oldName);
-  if(newName===null) return;
-  let newPrice=prompt("السعر لكل 100 BIXEL:",oldPrice);
-  if(newPrice===null) return;
-  newPrice=Number(newPrice);
-  if(!newName||!newPrice){ alert("❌ البيانات غير صحيحة"); return; }
-  db.collection("offers").doc(docId).update({name:newName.trim(),pricePer100:newPrice});
-  alert("✅ تم تعديل العرض");
-}
-
-function deleteOffer(docId){
-  if(confirm("هل تريد حذف هذا العرض؟")) db.collection("offers").doc(docId).delete();
 }
 
 // الموافقة على الطلبات
@@ -274,8 +344,6 @@ function approve(orderId, uid, cost){
     alert("✅ تمت الموافقة وخصم الرصيد");
   });
 }
-
-// رفض الطلب
 function reject(orderId){
   if(confirm("هل تريد رفض الطلب؟")){
     db.collection("orders").doc(orderId).update({status:"rejected"});
