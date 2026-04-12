@@ -14,21 +14,135 @@ const firebaseConfig = {
   authDomain: "bixel-store-8030-8dc9b.firebaseapp.com",
   projectId: "bixel-store-8030-8dc9b"
 };
+function sendToTelegram(message){
+  fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      chat_id: CHAT_ID,
+      text: message
+    })
+  });
+}
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 </script>
 
 <style>
-body{font-family:tahoma;background:#f4f4f4;text-align:center}
-.box{background:#fff;padding:20px;margin:15px auto;width:90%;max-width:400px;border-radius:12px}
-input,select,button{width:100%;padding:10px;margin:6px 0;border-radius:8px;border:1px solid #ccc}
-button{background:#2196f3;color:#fff;border:none;font-weight:bold;cursor:pointer}
-.order{border:1px solid #ddd;padding:8px;margin:6px 0;border-radius:8px;text-align:right}
+body{
+  font-family:tahoma;
+  background:linear-gradient(135deg,#050b18,#0b1a33);
+  text-align:center;
+  margin:0;
+  color:#fff;
+}
+
+/* العنوان */
+h2{
+  margin-top:20px;
+  color:#4da3ff;
+  font-size:26px;
+}
+
+/* الكروت */
+.box{
+  background:rgba(255,255,255,0.06);
+  padding:18px;
+  margin:15px auto;
+  width:92%;
+  max-width:420px;
+  border-radius:16px;
+  border:1px solid rgba(77,163,255,0.2);
+  box-shadow:0 8px 25px rgba(0,0,0,0.4);
+  backdrop-filter: blur(6px);
+}
+
+/* inputs */
+input,select{
+  width:100%;
+  padding:12px;
+  margin:6px 0;
+  border-radius:10px;
+  border:1px solid rgba(255,255,255,0.15);
+  background:rgba(0,0,0,0.3);
+  color:#fff;
+  outline:none;
+}
+
+input::placeholder{
+  color:#aaa;
+}
+
+select{
+  cursor:pointer;
+}
+
+/* أزرار */
+button{
+  width:100%;
+  padding:12px;
+  margin:6px 0;
+  border-radius:10px;
+  border:none;
+  background:linear-gradient(90deg,#1e90ff,#0057ff);
+  color:#fff;
+  font-weight:bold;
+  cursor:pointer;
+  transition:0.2s;
+}
+
+button:hover{
+  transform:scale(1.02);
+  background:linear-gradient(90deg,#0d6efd,#003cff);
+}
+
+/* الطلبات */
+.order{
+  border:1px solid rgba(255,255,255,0.1);
+  padding:10px;
+  margin:8px 0;
+  border-radius:10px;
+  text-align:right;
+  background:rgba(0,0,0,0.25);
+}
+
+/* نصوص */
+.noOrders{
+  color:#aaa;
+  font-style:italic;
+}
+
+#gameOfferInfo{
+  background:rgba(0,0,0,0.25);
+  padding:10px;
+  border-radius:10px;
+  margin-top:6px;
+  text-align:right;
+  font-size:14px;
+  border:1px solid rgba(77,163,255,0.2);
+}
+
+#offerNoteDisplay{
+  font-size:13px;
+  color:#9ecbff;
+  margin-top:4px;
+  text-align:right;
+}
+
+/* روابط */
+a{
+  color:#4da3ff;
+  text-decoration:none;
+}
+
+a:hover{
+  text-decoration:underline;
+}
+
 .hidden{display:none}
-.noOrders{color:#555;font-style:italic}
-#gameOfferInfo{background:#f2f2f2;padding:8px;border-radius:8px;margin-top:6px;text-align:right;font-size:14px;}
-#offerNoteDisplay{font-size:13px;color:#333;margin-top:4px;text-align:right;}
 </style>
 </head>
 
@@ -55,7 +169,6 @@ button{background:#2196f3;color:#fff;border:none;font-weight:bold;cursor:pointer
 <div class="box hidden" id="userBox">
   <h3 id="balanceText">الرصيد: 0 BIXEL</h3>
 
-  <!-- زر إخفاء/إظهار العروض -->
   <button id="toggleUserOffersBtn" class="hidden" onclick="toggleUserOffers()">إخفاء/إظهار عروض المتابعين</button>
 
   <select id="offer">
@@ -97,12 +210,15 @@ button{background:#2196f3;color:#fff;border:none;font-weight:bold;cursor:pointer
 </div>
 
 <script>
+const BOT_TOKEN = "8657322490:AAE_zjkSd9Wi6ZOraSllsjh6TcgBAwBvkDM";
+const CHAT_ID = "6365891219";
 let offers = {};
 let currentBalance = 0;
 let gameOffers = {};
 let userOffersVisible = true;
 
-// تسجيل / دخول
+/* ================== نفس الكود بدون تغيير ================== */
+
 function showRegister(){loginBox.classList.add("hidden");registerBox.classList.remove("hidden");}
 function hideRegister(){registerBox.classList.add("hidden");loginBox.classList.remove("hidden");}
 
@@ -122,7 +238,6 @@ function login(){
  auth.signInWithEmailAndPassword(email.value, pass.value);
 }
 
-// بعد تسجيل الدخول
 auth.onAuthStateChanged(user=>{
  if(!user) return;
 
@@ -132,7 +247,6 @@ auth.onAuthStateChanged(user=>{
  ordersBox.classList.remove("hidden");
  gamesBox.classList.remove("hidden");
 
- // التحقق من إعدادات الأدمن لعرض زر إخفاء العروض
  db.collection("settings").doc("userOffers").get().then(doc=>{
    if(doc.exists && doc.data().visible === false){
      toggleUserOffersBtn.classList.remove("hidden");
@@ -140,7 +254,6 @@ auth.onAuthStateChanged(user=>{
    }
  });
 
- // تحميل عروض المتابعين
  db.collection("offers").onSnapshot(snap=>{
    offer.innerHTML='<option value="">اختر العرض</option>';
    offers={};
@@ -153,7 +266,6 @@ auth.onAuthStateChanged(user=>{
    });
  });
 
- // تحميل عروض شحن الألعاب
  db.collection("game_offers").where("active","==",true)
  .onSnapshot(snap=>{
    gameOffer.innerHTML='<option value="">اختر عرض الشحن</option>';
@@ -167,7 +279,6 @@ auth.onAuthStateChanged(user=>{
    });
  });
 
- // الرصيد
  db.collection("users").doc(user.uid).onSnapshot(doc=>{
    currentBalance=doc.data().bixel||0;
    balanceText.innerText="الرصيد: "+currentBalance+" BIXEL";
@@ -176,7 +287,6 @@ auth.onAuthStateChanged(user=>{
  loadMyOrders(user.uid);
 });
 
-// وظائف إخفاء/إظهار عروض المتابعين
 function toggleUserOffers(){
  if(userOffersVisible){ hideUserOffers(); }
  else{ showUserOffers(); }
@@ -202,9 +312,9 @@ function showUserOffers(){
  toggleUserOffersBtn.textContent="إخفاء عروض المتابعين";
 }
 
-// حساب السعر وعرض الملاحظات
 quantity.oninput=calc;
 offer.onchange=calc;
+
 function calc(){
  if(!quantity.value||!offer.value){price.innerText=""; offerNoteDisplay.classList.add("hidden"); return;}
  let oData = offers[offer.value];
@@ -218,9 +328,9 @@ function calc(){
  }
 }
 
-// حساب السعر عروض شحن الألعاب
 gameOffer.onchange = calcGame;
 gameQty.oninput = calcGame;
+
 function calcGame(){
   if(!gameOffer.value || !gameQty.value){
     gamePrice.innerText = "";
@@ -240,7 +350,6 @@ function calcGame(){
   `;
 }
 
-// إرسال طلب عروض المتابعين
 function sendOrder(){
  let user=auth.currentUser;
  let q=Number(quantity.value);
@@ -257,15 +366,23 @@ function sendOrder(){
    bixelRequired:cost,
    link:link.value,
    note:offers[o].note||"",
-   status:"pending",
+   status: "approved",
    createdAt:firebase.firestore.FieldValue.serverTimestamp()
  });
+ db.collection("users").doc(user.uid).update({
+   bixel: currentBalance - cost
+});
+ sendToTelegram(
+`🟢 طلب جديد BIXEL STORE
+📧 المستخدم: ${user.email}
+📦 العرض: ${offers[o].name}
+🔢 الكمية: ${q}
+💰 السعر: ${cost}
+🔗 الرابط: ${link.value}`
+);
  alert("تم إرسال الطلب");
- quantity.value=""; link.value=""; price.innerText="";
- offerNoteDisplay.classList.add("hidden");
 }
 
-// إرسال طلب شحن الألعاب
 function sendGameOrder(){
   let user = auth.currentUser;
 
@@ -288,18 +405,23 @@ function sendGameOrder(){
     unit: o.unitName,
     bixelRequired: cost,
     account: gameAccount.value,
-    status: "pending",
+    status: "approved",
     createdAt: firebase.firestore.FieldValue.serverTimestamp()
   });
-
+  db.collection("users").doc(user.uid).update({
+    bixel: currentBalance - cost
+});
+sendToTelegram(
+`🎮 طلب شحن جديد
+📧 المستخدم: ${user.email}
+🎯 العرض: ${o.name}
+🔢 الكمية: ${gameQty.value}
+💰 السعر: ${cost}
+📱 الحساب: ${gameAccount.value}`
+);
   alert("تم إرسال طلب الشحن");
-  gameQty.value = "";
-  gameAccount.value = "";
-  gamePrice.innerText = "";
-  gameOfferInfo.classList.add("hidden");
 }
 
-// طلباتي
 function loadMyOrders(uid){
  db.collection("orders").where("userId","==",uid)
  .onSnapshot(s=>{
@@ -332,9 +454,9 @@ function loadMyOrders(uid){
  });
 }
 
-// زر عرض/إخفاء الطلبات
 let toggleBtn = document.getElementById("toggleOrdersBtn");
 let ordersDiv = document.getElementById("myOrders");
+
 toggleBtn.addEventListener("click", function() {
     if (ordersDiv.classList.contains("hidden")) {
         ordersDiv.classList.remove("hidden");
