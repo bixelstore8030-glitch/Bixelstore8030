@@ -29,6 +29,7 @@ function sendToTelegram(message){
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
+firebase.auth().setPersistence(firebase.auth.Auth.Persistence.NONE);
 </script>
 
 <style>
@@ -143,6 +144,91 @@ a:hover{
 }
 
 .hidden{display:none}
+/* ===== خلفية احترافية ===== */
+body{
+  background: url("https://images.unsplash.com/photo-1507525428034-b723cf961d3e") no-repeat center;
+  background-size: cover;
+}
+
+/* ===== صندوق تسجيل الدخول ===== */
+#loginBox{
+  backdrop-filter: blur(25px);
+  background: rgba(255,255,255,0.08);
+  border-radius:25px;
+  border:1px solid rgba(255,255,255,0.2);
+  box-shadow:0 15px 50px rgba(0,0,0,0.7);
+  padding:30px;
+  max-width:350px;
+  margin:auto;
+  animation: fadeIn 1s ease;
+}
+
+/* حركة ظهور */
+@keyframes fadeIn{
+  from{opacity:0; transform:translateY(30px);}
+  to{opacity:1; transform:translateY(0);}
+}
+
+/* الحقول */
+.input-group{
+  position:relative;
+  margin:12px 0;
+}
+
+.input-group input{
+  width:100%;
+  padding:12px 40px 12px 15px;
+  border-radius:30px;
+  border:1px solid rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.1);
+  color:#fff;
+  outline:none;
+}
+
+/* الأيقونات */
+.input-group i{
+  position:absolute;
+  right:12px;
+  top:50%;
+  transform:translateY(-50%);
+  color:#ccc;
+}
+
+/* زر رئيسي */
+.login-btn{
+  width:100%;
+  padding:12px;
+  border:none;
+  border-radius:30px;
+  background:#fff;
+  color:#000;
+  font-weight:bold;
+  cursor:pointer;
+  transition:0.3s;
+}
+
+.login-btn:hover{
+  transform:scale(1.05);
+}
+
+/* زر ثانوي */
+.register-btn{
+  width:100%;
+  padding:12px;
+  border-radius:30px;
+  background:transparent;
+  border:1px solid rgba(255,255,255,0.3);
+  color:#fff;
+  margin-top:8px;
+}
+
+/* خيارات */
+.options{
+  display:flex;
+  justify-content:space-between;
+  font-size:13px;
+  margin:8px 0;
+}
 </style>
 </head>
 
@@ -152,10 +238,19 @@ a:hover{
 
 <!-- تسجيل الدخول -->
 <div class="box" id="loginBox">
-  <input id="email" placeholder="الإيميل">
-  <input id="pass" type="password" placeholder="كلمة المرور">
-  <button onclick="login()">دخول</button>
-  <button onclick="showRegister()">إنشاء حساب</button>
+  <h2 style="margin-bottom:15px;">Login</h2>
+
+  <input id="email" placeholder="Username أو Email">
+  <input id="pass" type="password" placeholder="Password">
+
+  <div style="display:flex;justify-content:space-between;font-size:13px;margin:5px 0 10px;">
+    <label><input type="checkbox"> تذكرني</label>
+    <a href="#">نسيت كلمة المرور؟</a>
+  </div>
+
+  <button onclick="login()">Login</button>
+  <button onclick="showRegister()">Register</button>
+</div>
 </div>
 
 <div class="box hidden" id="registerBox">
